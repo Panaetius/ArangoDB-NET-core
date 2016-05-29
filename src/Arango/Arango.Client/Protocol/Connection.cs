@@ -63,12 +63,9 @@ namespace Arango.Client.Protocol
             {
                 httpRequest.Headers = request.Headers;
             }
-
-            httpRequest.KeepAlive = true;
+            
             httpRequest.Proxy = null;
-            httpRequest.SendChunked = false;
             httpRequest.Method = request.HttpMethod.ToString();
-            httpRequest.UserAgent = ASettings.DriverName + "/" + ASettings.DriverVersion;
 
             if (!string.IsNullOrEmpty(Username) && !string.IsNullOrEmpty(Password))
             {
@@ -84,23 +81,25 @@ namespace Arango.Client.Protocol
 
                 var data = Encoding.UTF8.GetBytes(request.Body);
 
-                using (var stream = httpRequest.GetRequestStream())
+                var task = httpRequest.GetRequestStreamAsync();
+                task.Wait();
+
+                using (var stream = task.Result)
                 {
                     stream.Write(data, 0, data.Length);
                     stream.Flush();
-                    stream.Close();
+                    stream.Dispose();
                 }
-            }
-            else
-            {
-                httpRequest.ContentLength = 0;
             }
 
             var response = new Response();
 
             try
             {
-                using (var httpResponse = (HttpWebResponse)httpRequest.GetResponse())
+                var responseTask = httpRequest.GetResponseAsync();
+                responseTask.Wait();
+
+                using (var httpResponse = (HttpWebResponse)responseTask.Result)
                 using (var responseStream = httpResponse.GetResponseStream())
                 using (var reader = new StreamReader(responseStream))
                 {
@@ -108,8 +107,8 @@ namespace Arango.Client.Protocol
                     response.Headers = httpResponse.Headers;
                     response.Body = reader.ReadToEnd();
 
-                    reader.Close();
-                    responseStream.Close();
+                    reader.Dispose();
+                    responseStream.Dispose();
                 }
 
                 response.GetBodyDataType();
@@ -135,8 +134,8 @@ namespace Arango.Client.Protocol
                             {
                                 response.Body = exceptionReader.ReadToEnd();
 
-                                exceptionReader.Close();
-                                exceptionResponseStream.Close();
+                                exceptionReader.Dispose();
+                                exceptionResponseStream.Dispose();
                             }
                             
                             response.GetBodyDataType();

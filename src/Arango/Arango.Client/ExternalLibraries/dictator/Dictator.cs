@@ -115,12 +115,12 @@ namespace Arango.Client
                         document.Object(fieldName, propertyValue);
                     }
                     // property is array or collection
-                    else if ((propertyInfo.PropertyType.IsArray || propertyInfo.PropertyType.IsGenericType) && (propertyValue is IList))
+                    else if ((propertyInfo.PropertyType.IsArray || propertyInfo.PropertyType.GetTypeInfo().IsGenericType) && (propertyValue is IList))
                     {
                         document.List(fieldName, ToList(propertyValue));
                     }
                     // property is class except the string type since string values are parsed differently
-                    else if (propertyInfo.PropertyType.IsClass && (propertyInfo.PropertyType.Name != "String"))
+                    else if (propertyInfo.PropertyType.GetTypeInfo().IsClass && (propertyInfo.PropertyType.Name != "String"))
                     {
                         document.Object(fieldName, ToDocument(propertyValue));
                     }
@@ -171,10 +171,10 @@ namespace Arango.Client
                         outputCollection.Add(collection[i]);
                     }
                     // collection is generic
-                    else if (collectionType.IsGenericType && (collection is IEnumerable))
+                    else if (collectionType.GetTypeInfo().IsGenericType && (collection is IEnumerable))
                     {
                         // generic collection consists of basic types
-                        if (elementType.IsPrimitive ||
+                        if (elementType.GetTypeInfo().IsPrimitive ||
                             (elementType == typeof(string)) ||
                             (elementType == typeof(DateTime)) ||
                             (elementType == typeof(decimal)))

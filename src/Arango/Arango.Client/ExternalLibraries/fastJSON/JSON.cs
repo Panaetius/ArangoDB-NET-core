@@ -2,13 +2,18 @@
 using System.Collections;
 using System.Collections.Generic;
 #if !SILVERLIGHT
-using System.Data;
 #endif
 using System.Globalization;
-using System.IO;
-using System.Reflection;
-using System.Reflection.Emit;
 using System.Collections.Specialized;
+using System.Reflection;
+
+namespace System.Runtime.Serialization
+{
+    public static partial class FormatterServices
+    {
+        public static Object GetUninitializedObject(Type type) { return default(Object); }
+    }
+}
 
 namespace Arango.fastJSON
 {
@@ -359,12 +364,6 @@ namespace Arango.fastJSON
             object o = new JsonParser(json).Decode();
             if (o == null)
                 return null;
-#if !SILVERLIGHT
-            if (type != null && type == typeof(DataSet))
-                return CreateDataset(o as Dictionary<string, object>, null);
-            else if (type != null && type == typeof(DataTable))
-                return CreateDataTable(o as Dictionary<string, object>, null);
-#endif
             if (o is IDictionary)
             {
                 if (type != null && t == typeof(Dictionary<,>)) // deserialize a dictionary
@@ -556,12 +555,7 @@ namespace Arango.fastJSON
             }
 
             bool found = d.TryGetValue("$type", out tn);
-#if !SILVERLIGHT
-            if (found == false && type == typeof(System.Object))
-            {
-                return d;   // CreateDataset(d, globaltypes);
-            }
-#endif
+
             if (found)
             {
                 if (_usingglobals)
@@ -631,12 +625,6 @@ namespace Arango.fastJSON
                                 // what about 'else'?
                                 break;
                             case myPropInfoType.ByteArray: oset = Convert.FromBase64String((string)v); break;
-#if !SILVERLIGHT
-                            case myPropInfoType.DataSet: oset = CreateDataset((Dictionary<string, object>)v, globaltypes); break;
-                            case myPropInfoType.DataTable: oset = CreateDataTable((Dictionary<string, object>)v, globaltypes); break;
-                            case myPropInfoType.SortedList: oset = CreateSortedList((List<object>)v, pi, globaltypes); break;
-                            case myPropInfoType.Hashtable: // same case as Dictionary
-#endif
                             case myPropInfoType.Dictionary: oset = CreateDictionary((List<object>)v, pi.pt, pi.GenericTypes, globaltypes); break;
                             case myPropInfoType.StringKeyDictionary: oset = CreateStringKeyDictionary((Dictionary<string, object>)v, pi.pt, pi.GenericTypes, globaltypes); break;
                             case myPropInfoType.NameValue: oset = CreateNV((Dictionary<string, object>)v); break;
@@ -812,7 +800,7 @@ namespace Arango.fastJSON
 
                 else if (ob is List<object>)
                 {
-                    if (bt.IsGenericType)
+                    if (bt.GetTypeInfo().IsGenericType)
                         col.Add((List<object>)ob);//).ToArray());
                     else
                         col.Add(((List<object>)ob).ToArray());
@@ -892,167 +880,6 @@ namespace Arango.fastJSON
 
             return col;
         }
-
-#if !SILVERLIGHT
-        private DataSet CreateDataset(Dictionary<string, object> reader, Dictionary<string, object> globalTypes)
-        {
-            DataSet ds = new DataSet();
-            ds.EnforceConstraints = false;
-            ds.BeginInit();
-
-            // read dataset schema here
-            var schema = reader["$schema"];
-
-            if (schema is string)
-            {
-                TextReader tr = new StringReader((string)schema);
-                ds.ReadXmlSchema(tr);
-            }
-            else
-            {
-                DatasetSchema ms = (DatasetSchema)ParseDictionary((Dictionary<string, object>)schema, globalTypes, typeof(DatasetSchema), null);
-                ds.DataSetName = ms.Name;
-                for (int i = 0; i < ms.Info.Count; i += 3)
-                {
-                    if (ds.Tables.Contains(ms.Info[i]) == false)
-                        ds.Tables.Add(ms.Info[i]);
-                    ds.Tables[ms.Info[i]].Columns.Add(ms.Info[i + 1], Type.GetType(ms.Info[i + 2]));
-                }
-            }
-
-            foreach (KeyValuePair<string, object> pair in reader)
-            {
-                if (pair.Key == "$type" || pair.Key == "$schema") continue;
-
-                List<object> rows = (List<object>)pair.Value;
-                if (rows == null) continue;
-
-                DataTable dt = ds.Tables[pair.Key];
-                ReadDataTable(rows, dt);
-            }
-
-            ds.EndInit();
-
-            return ds;
-        }
-
-        private void ReadDataTable(List<object> rows, DataTable dt)
-        {
-            dt.BeginInit();
-            dt.BeginLoadData();
-            List<int> guidcols = new List<int>();
-            List<int> datecol = new List<int>();
-
-            foreach (DataColumn c in dt.Columns)
-            {
-                if (c.DataType == typeof(Guid) || c.DataType == typeof(Guid?))
-                    guidcols.Add(c.Ordinal);
-                if (_params.UseUTCDateTime && (c.DataType == typeof(DateTime) || c.DataType == typeof(DateTime?)))
-                    datecol.Add(c.Ordinal);
-            }
-
-            foreach (List<object> row in rows)
-            {
-                object[] v = new object[row.Count];
-                row.CopyTo(v, 0);
-                foreach (int i in guidcols)
-                {
-                    string s = (string)v[i];
-                    if (s != null && s.Length < 36)
-                        v[i] = new Guid(Convert.FromBase64String(s));
-                }
-                if (_params.UseUTCDateTime)
-                {
-                    foreach (int i in datecol)
-                    {
-                        string s = (string)v[i];
-                        if (s != null)
-                            v[i] = CreateDateTime(s);
-                    }
-                }
-                dt.Rows.Add(v);
-            }
-
-            dt.EndLoadData();
-            dt.EndInit();
-        }
-
-        DataTable CreateDataTable(Dictionary<string, object> reader, Dictionary<string, object> globalTypes)
-        {
-            var dt = new DataTable();
-
-            // read dataset schema here
-            var schema = reader["$schema"];
-
-            if (schema is string)
-            {
-                TextReader tr = new StringReader((string)schema);
-                dt.ReadXmlSchema(tr);
-            }
-            else
-            {
-                var ms = (DatasetSchema)this.ParseDictionary((Dictionary<string, object>)schema, globalTypes, typeof(DatasetSchema), null);
-                dt.TableName = ms.Info[0];
-                for (int i = 0; i < ms.Info.Count; i += 3)
-                {
-                    dt.Columns.Add(ms.Info[i + 1], Type.GetType(ms.Info[i + 2]));
-                }
-            }
-
-            foreach (var pair in reader)
-            {
-                if (pair.Key == "$type" || pair.Key == "$schema")
-                    continue;
-
-                var rows = (List<object>)pair.Value;
-                if (rows == null)
-                    continue;
-
-                if (!dt.TableName.Equals(pair.Key, StringComparison.InvariantCultureIgnoreCase))
-                    continue;
-
-                ReadDataTable(rows, dt);
-            }
-
-            return dt;
-        }
-        
-        private object CreateSortedList(List<object> reader, myPropInfo pi, Dictionary<string, object> globalTypes)
-        {
-            Type pt = pi.pt;
-            
-            IDictionary col = (IDictionary)Reflection.Instance.FastCreateInstance(pt);
-            
-            Type[] types = pt.GetGenericArguments();
-            Type t1 = null;
-            Type t2 = null;
-            if (types != null)
-            {
-                t1 = types[0];
-                t2 = types[1];
-            }
-
-            foreach (Dictionary<string, object> values in reader)
-            {
-                object key = values["k"];
-                object val = values["v"];
-
-                if (key is Dictionary<string, object>)
-                    key = ParseDictionary((Dictionary<string, object>)key, globalTypes, t1, null);
-                else
-                    key = ChangeType(key, t1);
-
-                if (val is Dictionary<string, object>)
-                    val = ParseDictionary((Dictionary<string, object>)val, globalTypes, t2, null);
-                else
-                    val = ChangeType(val, t2);
-
-                col.Add(key, val);
-            }
-
-            return col;
-        }
-#endif
         #endregion
     }
 

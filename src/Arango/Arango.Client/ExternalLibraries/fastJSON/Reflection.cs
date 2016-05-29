@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Reflection.Emit;
 using System.Reflection;
-using System.Collections;
 #if !SILVERLIGHT
-using System.Data;
 #endif
 using System.Collections.Specialized;
 
@@ -35,12 +32,6 @@ namespace Arango.fastJSON
         StringKeyDictionary,
         NameValue,
         StringDictionary,
-#if !SILVERLIGHT
-        Hashtable,
-        SortedList,
-        DataSet,
-        DataTable,
-#endif
         Custom,
         Unknown,
     }
@@ -199,7 +190,7 @@ namespace Arango.fastJSON
             else if (t == typeof(string)) d_type = myPropInfoType.String;
             else if (t == typeof(bool) || t == typeof(bool?)) d_type = myPropInfoType.Bool;
             else if (t == typeof(DateTime) || t == typeof(DateTime?)) d_type = myPropInfoType.DateTime;
-            else if (t.IsEnum) d_type = myPropInfoType.Enum;
+            else if (t.GetTypeInfo().IsEnum) d_type = myPropInfoType.Enum;
             else if (t == typeof(Guid) || t == typeof(Guid?)) d_type = myPropInfoType.Guid;
             else if (t == typeof(StringDictionary)) d_type = myPropInfoType.StringDictionary;
             else if (t == typeof(NameValueCollection)) d_type = myPropInfoType.NameValue;
@@ -219,21 +210,15 @@ namespace Arango.fastJSON
                 else
                     d_type = myPropInfoType.Dictionary;
             }
-#if !SILVERLIGHT
-            else if (t == typeof(Hashtable)) d_type = myPropInfoType.Hashtable;
-            else if (t.Name.Contains("SortedList")) d_type = myPropInfoType.SortedList;
-            else if (t == typeof(DataSet)) d_type = myPropInfoType.DataSet;
-            else if (t == typeof(DataTable)) d_type = myPropInfoType.DataTable;
-#endif
             else if (customType)
                 d_type = myPropInfoType.Custom;
 
-            if (t.IsValueType && !t.IsPrimitive && !t.IsEnum && t != typeof(decimal))
+            if (t.GetTypeInfo().IsValueType && !t.GetTypeInfo().IsPrimitive && !t.GetTypeInfo().IsEnum && t != typeof(decimal))
                 d.IsStruct = true;
 
-            d.IsClass = t.IsClass;
-            d.IsValueType = t.IsValueType;
-            if (t.IsGenericType)
+            d.IsClass = t.GetTypeInfo().IsClass;
+            d.IsValueType = t.GetTypeInfo().IsValueType;
+            if (t.GetTypeInfo().IsGenericType)
             {
                 d.IsGenericType = true;
                 d.bt = t.GetGenericArguments()[0];
@@ -249,7 +234,7 @@ namespace Arango.fastJSON
 
         private Type GetChangeType(Type conversionType)
         {
-            if (conversionType.IsGenericType && conversionType.GetGenericTypeDefinition().Equals(typeof(Nullable<>)))
+            if (conversionType.GetTypeInfo().IsGenericType && conversionType.GetGenericTypeDefinition().Equals(typeof(Nullable<>)))
                 return Reflection.Instance.GetGenericArguments(conversionType)[0];// conversionType.GetGenericArguments()[0];
 
             return conversionType;
@@ -300,7 +285,7 @@ namespace Arango.fastJSON
                 }
                 else
                 {
-                    if (objtype.IsClass)
+                    if (objtype.GetTypeInfo().IsClass)
                     {
                         DynamicMethod dynMethod = new DynamicMethod("_", objtype, null);
                         ILGenerator ilGen = dynMethod.GetILGenerator();
@@ -341,7 +326,7 @@ namespace Arango.fastJSON
 
             ILGenerator il = dynamicSet.GetILGenerator();
 
-            if (!type.IsClass) // structs
+            if (!type.GetTypeInfo().IsClass) // structs
             {
                 var lv = il.DeclareLocal(type);
                 il.Emit(OpCodes.Ldarg_0);
@@ -349,7 +334,7 @@ namespace Arango.fastJSON
                 il.Emit(OpCodes.Stloc_0);
                 il.Emit(OpCodes.Ldloca_S, lv);
                 il.Emit(OpCodes.Ldarg_1);
-                if (fieldInfo.FieldType.IsClass)
+                if (fieldInfo.FieldType.GetTypeInfo().IsClass)
                     il.Emit(OpCodes.Castclass, fieldInfo.FieldType);
                 else
                     il.Emit(OpCodes.Unbox_Any, fieldInfo.FieldType);
@@ -362,7 +347,7 @@ namespace Arango.fastJSON
             {
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldarg_1);
-                if (fieldInfo.FieldType.IsValueType)
+                if (fieldInfo.FieldType.GetTypeInfo().IsValueType)
                     il.Emit(OpCodes.Unbox_Any, fieldInfo.FieldType);
                 il.Emit(OpCodes.Stfld, fieldInfo);
                 il.Emit(OpCodes.Ldarg_0);
@@ -383,7 +368,7 @@ namespace Arango.fastJSON
             DynamicMethod setter = new DynamicMethod("_", typeof(object), arguments);
             ILGenerator il = setter.GetILGenerator();
 
-            if (!type.IsClass) // structs
+            if (!type.GetTypeInfo().IsClass) // structs
             {
                 var lv = il.DeclareLocal(type);
                 il.Emit(OpCodes.Ldarg_0);
@@ -391,7 +376,7 @@ namespace Arango.fastJSON
                 il.Emit(OpCodes.Stloc_0);
                 il.Emit(OpCodes.Ldloca_S, lv);
                 il.Emit(OpCodes.Ldarg_1);
-                if (propertyInfo.PropertyType.IsClass)
+                if (propertyInfo.PropertyType.GetTypeInfo().IsClass)
                     il.Emit(OpCodes.Castclass, propertyInfo.PropertyType);
                 else
                     il.Emit(OpCodes.Unbox_Any, propertyInfo.PropertyType);
@@ -406,7 +391,7 @@ namespace Arango.fastJSON
                     il.Emit(OpCodes.Ldarg_0);
                     il.Emit(OpCodes.Castclass, propertyInfo.DeclaringType);
                     il.Emit(OpCodes.Ldarg_1);
-                    if (propertyInfo.PropertyType.IsClass)
+                    if (propertyInfo.PropertyType.GetTypeInfo().IsClass)
                         il.Emit(OpCodes.Castclass, propertyInfo.PropertyType);
                     else
                         il.Emit(OpCodes.Unbox_Any, propertyInfo.PropertyType);
@@ -417,7 +402,7 @@ namespace Arango.fastJSON
                 {
                     il.Emit(OpCodes.Ldarg_0);
                     il.Emit(OpCodes.Ldarg_1);
-                    if (propertyInfo.PropertyType.IsClass)
+                    if (propertyInfo.PropertyType.GetTypeInfo().IsClass)
                         il.Emit(OpCodes.Castclass, propertyInfo.PropertyType);
                     else
                         il.Emit(OpCodes.Unbox_Any, propertyInfo.PropertyType);
@@ -436,7 +421,7 @@ namespace Arango.fastJSON
 
             ILGenerator il = dynamicGet.GetILGenerator();
 
-            if (!type.IsClass) // structs
+            if (!type.GetTypeInfo().IsClass) // structs
             {
                 var lv = il.DeclareLocal(type);
                 il.Emit(OpCodes.Ldarg_0);
@@ -444,14 +429,14 @@ namespace Arango.fastJSON
                 il.Emit(OpCodes.Stloc_0);
                 il.Emit(OpCodes.Ldloca_S, lv);
                 il.Emit(OpCodes.Ldfld, fieldInfo);
-                if (fieldInfo.FieldType.IsValueType)
+                if (fieldInfo.FieldType.GetTypeInfo().IsValueType)
                     il.Emit(OpCodes.Box, fieldInfo.FieldType);
             }
             else
             {
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldfld, fieldInfo);
-                if (fieldInfo.FieldType.IsValueType)
+                if (fieldInfo.FieldType.GetTypeInfo().IsValueType)
                     il.Emit(OpCodes.Box, fieldInfo.FieldType);
             }
 
@@ -470,7 +455,7 @@ namespace Arango.fastJSON
 
             ILGenerator il = getter.GetILGenerator();
 
-            if (!type.IsClass) // structs
+            if (!type.GetTypeInfo().IsClass) // structs
             {
                 var lv = il.DeclareLocal(type);
                 il.Emit(OpCodes.Ldarg_0);
@@ -478,7 +463,7 @@ namespace Arango.fastJSON
                 il.Emit(OpCodes.Stloc_0);
                 il.Emit(OpCodes.Ldloca_S, lv);
                 il.EmitCall(OpCodes.Call, getMethod, null);
-                if (propertyInfo.PropertyType.IsValueType)
+                if (propertyInfo.PropertyType.GetTypeInfo().IsValueType)
                     il.Emit(OpCodes.Box, propertyInfo.PropertyType);
             }
             else
@@ -492,7 +477,7 @@ namespace Arango.fastJSON
                 else
                     il.Emit(OpCodes.Call, getMethod);
 
-                if (propertyInfo.PropertyType.IsValueType)
+                if (propertyInfo.PropertyType.GetTypeInfo().IsValueType)
                     il.Emit(OpCodes.Box, propertyInfo.PropertyType);
             }
 

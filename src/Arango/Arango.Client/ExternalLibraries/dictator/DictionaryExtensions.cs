@@ -217,7 +217,7 @@ namespace Arango.Client
             var type = typeof(T);
             var fieldValue = GetFieldValue(dictionary, fieldPath);
             
-            if (!(fieldValue.GetType().IsGenericType && (fieldValue is IEnumerable)))
+            if (!(fieldValue.GetType().GetTypeInfo().IsGenericType && (fieldValue is IEnumerable)))
             {
                 throw new InvalidFieldTypeException(string.Format("Field path '{0}' value does not contain list type.", fieldPath));
             }
@@ -901,7 +901,7 @@ namespace Arango.Client
             {
                 var fieldValue = GetFieldValue(dictionary, fieldPath);
             
-                if (fieldValue.GetType().IsEnum)
+                if (fieldValue.GetType().GetTypeInfo().IsEnum)
                 {
                     isValid = true;
                 }
@@ -961,7 +961,7 @@ namespace Arango.Client
             {
                 var fieldValue = GetFieldValue(dictionary, fieldPath);
             
-                if (fieldValue.GetType().IsGenericType && (fieldValue is IEnumerable))
+                if (fieldValue.GetType().GetTypeInfo().IsGenericType && (fieldValue is IEnumerable))
                 {
                     isValid = true;
                 }
@@ -1155,7 +1155,7 @@ namespace Arango.Client
                 
                 var fieldType = field.Value.GetType();
                 
-                if (fieldType.IsValueType || fieldType.IsEnum || fieldType.Equals(typeof(System.String)))
+                if (fieldType.GetTypeInfo().IsValueType || fieldType.GetTypeInfo().IsEnum || fieldType.Equals(typeof(System.String)))
                 {
                     clone.Add(field.Key, field.Value);
                 }
@@ -1199,7 +1199,7 @@ namespace Arango.Client
                     var fieldValue = GetFieldValue(dictionary, fieldPath);
                     var fieldType = fieldValue.GetType();
                     
-                    if (fieldType.IsValueType || fieldType.IsEnum || fieldType.Equals(typeof(System.String)))
+                    if (fieldType.GetTypeInfo().IsValueType || fieldType.GetTypeInfo().IsEnum || fieldType.Equals(typeof(System.String)))
                     {
                         clone.Object(fieldPath, fieldValue);
                     }
@@ -1633,7 +1633,7 @@ namespace Arango.Client
                         propertyInfo.SetValue(stronglyTypedObject, ConvertToObject((Dictionary<string, object>)fieldValue, propertyInfo.PropertyType), null);
                     }
                     // property is a collection
-                    else if ((propertyInfo.PropertyType.IsArray || propertyInfo.PropertyType.IsGenericType) && (fieldValue is IList))
+                    else if ((propertyInfo.PropertyType.IsArray || propertyInfo.PropertyType.GetTypeInfo().IsGenericType) && (fieldValue is IList))
                     {  
                         propertyInfo.SetValue(
                             stronglyTypedObject,
@@ -1642,7 +1642,7 @@ namespace Arango.Client
                         );
                     }
                     // property is class except the string type since string values are parsed differently
-                    else if (propertyInfo.PropertyType.IsClass && (propertyInfo.PropertyType.Name != "String"))
+                    else if (propertyInfo.PropertyType.GetTypeInfo().IsClass && (propertyInfo.PropertyType.Name != "String"))
                     {
                         if (fieldType == typeof(Dictionary<string, object>))
                         {
@@ -1656,7 +1656,7 @@ namespace Arango.Client
                         }
                     }
                     // property is Enum type
-                    else if (propertyInfo.PropertyType.IsEnum)
+                    else if (propertyInfo.PropertyType.GetTypeInfo().IsEnum)
                     {
                         // field value in document is stored as enum object
                         if (fieldValue is Enum)
@@ -1752,10 +1752,10 @@ namespace Arango.Client
                         }
                     }
                     // collection is generic
-                    else if (collectionType.IsGenericType && (collection is IEnumerable))
+                    else if (collectionType.GetTypeInfo().IsGenericType && (collection is IEnumerable))
                     {
                         // generic collection consists of basic types
-                        if (elementType.IsPrimitive ||
+                        if (elementType.GetTypeInfo().IsPrimitive ||
                             (elementType == typeof(string)) ||
                             (elementType == typeof(DateTime)) ||
                             (elementType == typeof(decimal)))

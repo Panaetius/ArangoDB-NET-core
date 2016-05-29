@@ -2,12 +2,11 @@
 using System.Collections;
 using System.Collections.Generic;
 #if !SILVERLIGHT
-using System.Data;
 #endif
 using System.Globalization;
-using System.IO;
 using System.Text;
 using System.Collections.Specialized;
+using System.Reflection;
 
 namespace Arango.fastJSON
 {
@@ -82,7 +81,7 @@ namespace Arango.fastJSON
                 WriteDateTime((DateTime)obj);
 
             else if (_params.KVStyleStringDictionary == false && obj is IDictionary &&
-                obj.GetType().IsGenericType && obj.GetType().GetGenericArguments()[0] == typeof(string))
+                obj.GetType().GetTypeInfo().IsGenericType && obj.GetType().GetGenericArguments()[0] == typeof(string))
 
                 WriteStringDictionary((IDictionary)obj);
 #if net4
@@ -91,13 +90,6 @@ namespace Arango.fastJSON
 #endif
             else if (obj is IDictionary)
                 WriteDictionary((IDictionary)obj);
-#if !SILVERLIGHT
-            else if (obj is DataSet)
-                WriteDataset((DataSet)obj);
-
-            else if (obj is DataTable)
-                this.WriteDataTable((DataTable)obj);
-#endif
             else if (obj is byte[])
                 WriteBytes((byte[])obj);
 
@@ -196,11 +188,8 @@ namespace Arango.fastJSON
 
         private void WriteBytes(byte[] bytes)
         {
-#if !SILVERLIGHT
-            WriteStringFast(Convert.ToBase64String(bytes, 0, bytes.Length, Base64FormattingOptions.None));
-#else
+
             WriteStringFast(Convert.ToBase64String(bytes, 0, bytes.Length));
-#endif
         }
 
         private void WriteDateTime(DateTime dateTime)
@@ -233,117 +222,7 @@ namespace Arango.fastJSON
             _output.Append('\"');
         }
 
-#if !SILVERLIGHT
-        private DatasetSchema GetSchema(DataTable ds)
-        {
-            if (ds == null) return null;
 
-            DatasetSchema m = new DatasetSchema();
-            m.Info = new List<string>();
-            m.Name = ds.TableName;
-
-            foreach (DataColumn c in ds.Columns)
-            {
-                m.Info.Add(ds.TableName);
-                m.Info.Add(c.ColumnName);
-                m.Info.Add(c.DataType.ToString());
-            }
-            // FEATURE : serialize relations and constraints here
-
-            return m;
-        }
-
-        private DatasetSchema GetSchema(DataSet ds)
-        {
-            if (ds == null) return null;
-
-            DatasetSchema m = new DatasetSchema();
-            m.Info = new List<string>();
-            m.Name = ds.DataSetName;
-
-            foreach (DataTable t in ds.Tables)
-            {
-                foreach (DataColumn c in t.Columns)
-                {
-                    m.Info.Add(t.TableName);
-                    m.Info.Add(c.ColumnName);
-                    m.Info.Add(c.DataType.ToString());
-                }
-            }
-            // FEATURE : serialize relations and constraints here
-
-            return m;
-        }
-
-        private string GetXmlSchema(DataTable dt)
-        {
-            using (var writer = new StringWriter())
-            {
-                dt.WriteXmlSchema(writer);
-                return dt.ToString();
-            }
-        }
-
-        private void WriteDataset(DataSet ds)
-        {
-            _output.Append('{');
-            if (_params.UseExtensions)
-            {
-                WritePair("$schema", _params.UseOptimizedDatasetSchema ? (object)GetSchema(ds) : ds.GetXmlSchema());
-                _output.Append(',');
-            }
-            bool tablesep = false;
-            foreach (DataTable table in ds.Tables)
-            {
-                if (tablesep) _output.Append(',');
-                tablesep = true;
-                WriteDataTableData(table);
-            }
-            // end dataset
-            _output.Append('}');
-        }
-
-        private void WriteDataTableData(DataTable table)
-        {
-            _output.Append('\"');
-            _output.Append(table.TableName);
-            _output.Append("\":[");
-            DataColumnCollection cols = table.Columns;
-            bool rowseparator = false;
-            foreach (DataRow row in table.Rows)
-            {
-                if (rowseparator) _output.Append(',');
-                rowseparator = true;
-                _output.Append('[');
-
-                bool pendingSeperator = false;
-                foreach (DataColumn column in cols)
-                {
-                    if (pendingSeperator) _output.Append(',');
-                    WriteValue(row[column]);
-                    pendingSeperator = true;
-                }
-                _output.Append(']');
-            }
-
-            _output.Append(']');
-        }
-
-        void WriteDataTable(DataTable dt)
-        {
-            this._output.Append('{');
-            if (_params.UseExtensions)
-            {
-                this.WritePair("$schema", _params.UseOptimizedDatasetSchema ? (object)this.GetSchema(dt) : this.GetXmlSchema(dt));
-                this._output.Append(',');
-            }
-
-            WriteDataTableData(dt);
-
-            // end datatable
-            this._output.Append('}');
-        }
-#endif
 
         bool _TypesWritten = false;
         private void WriteObject(object obj)
