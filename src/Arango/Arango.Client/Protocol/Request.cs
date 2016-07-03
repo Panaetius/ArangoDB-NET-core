@@ -48,7 +48,7 @@ namespace Arango.Client.Protocol
         {
             if (parameters.ContainsKey(parameterName))
             {
-                Headers.Add(parameterName, parameters.String(parameterName));
+                Headers[parameterName] = parameters.String(parameterName);
             }
         }
         

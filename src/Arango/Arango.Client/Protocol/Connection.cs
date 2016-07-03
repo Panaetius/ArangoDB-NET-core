@@ -69,10 +69,8 @@ namespace Arango.Client.Protocol
 
             if (!string.IsNullOrEmpty(Username) && !string.IsNullOrEmpty(Password))
             {
-                httpRequest.Headers.Add(
-                    "Authorization", 
-                    "Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(Username + ":" + Password))
-                );
+                httpRequest.Headers["Authorization"] =
+                    "Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(Username + ":" + Password));
             }
 
             if (!string.IsNullOrEmpty(request.Body))
