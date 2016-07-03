@@ -506,7 +506,7 @@ namespace Arango.fastJSON
                     bool found = false;
                     foreach (var ignoreAttr in IgnoreAttributes)
                     {
-                        if (p.IsDefined(ignoreAttr, false))
+                        if (p.IsDefined(ignoreAttr))
                         {
                             found = true;
                             break;
@@ -528,7 +528,7 @@ namespace Arango.fastJSON
                     bool found = false;
                     foreach (var ignoreAttr in IgnoreAttributes)
                     {
-                        if (f.IsDefined(ignoreAttr, false))
+                        if (f.IsDefined(ignoreAttr))
                         {
                             found = true;
                             break;

@@ -475,7 +475,7 @@ namespace Arango.Client
             switch (enumFormat)
             {
                 case EnumFormat.Integer:
-                    SetFieldValue(dictionary, fieldPath, (int)Convert.ChangeType(fieldValue, Type.GetTypeCode(fieldValue.GetType())));
+                    SetFieldValue(dictionary, fieldPath, (int)Convert.ChangeType(fieldValue, Type.GetTypeCode(fieldValue.GetType()), CultureInfo.InvariantCulture));
                     break;
                 case EnumFormat.String:
                     SetFieldValue(dictionary, fieldPath, fieldValue.ToString());

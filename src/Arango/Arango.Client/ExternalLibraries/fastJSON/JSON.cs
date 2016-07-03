@@ -151,7 +151,7 @@ namespace Arango.fastJSON
             if (obj == null)
                 return "null";
 
-            if (obj.GetType().IsGenericType)
+            if (obj.GetType().GetTypeInfo().IsGenericType)
                 t = Reflection.Instance.GetGenericTypeDefinition(obj.GetType());
             if (t == typeof(Dictionary<,>) || t == typeof(List<>))
                 param.UsingGlobalTypes = false;
@@ -355,7 +355,7 @@ namespace Arango.fastJSON
             //_params = Parameters;
             _params.FixValues();
             Type t = null;
-            if (type != null && type.IsGenericType)
+            if (type != null && type.GetTypeInfo().IsGenericType)
                 t = Reflection.Instance.GetGenericTypeDefinition(type);
             if (t == typeof(Dictionary<,>) || t == typeof(List<>))
                 _params.UsingGlobalTypes = false;
@@ -420,7 +420,7 @@ namespace Arango.fastJSON
             else if (conversionType == typeof(string))
                 return (string)value;
 
-            else if (conversionType.IsEnum)
+            else if (conversionType.GetTypeInfo().IsEnum)
                 return CreateEnum(conversionType, value);
 
             else if (conversionType == typeof(DateTime))
@@ -448,7 +448,7 @@ namespace Arango.fastJSON
 
         private bool IsNullable(Type t)
         {
-            if (!t.IsGenericType) return false;
+            if (!t.GetTypeInfo().IsGenericType) return false;
             Type g = t.GetGenericTypeDefinition();
             return (g.Equals(typeof(Nullable<>)));
         }
