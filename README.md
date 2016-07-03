@@ -1,9 +1,9 @@
-Port of ArangoDB.Net compatible with .Net Core
+# Port of ArangoDB.Net compatible with .Net Core
 
 Provided "as is", I just need this for a private project and don't intend to maintain it. I will port changes to the original Repo as needed, but won't provide any support/answer to request. For bugs etc. refer to the original repo by yojimbo87
 
 
-Original Readme:
+# Original Readme:
 
 **This branch is compatible with ArangoDB 3.x. For more information about incompatible changes with previous branches read [release notes](https://docs.arangodb.com/devel/Manual/ReleaseNotes/UpgradingChanges30.html). For ArangoDB 2.x compatible driver checkout [this](https://github.com/yojimbo87/ArangoDB-NET/tree/2.x) branch.**
 
