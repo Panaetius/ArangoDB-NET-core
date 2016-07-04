@@ -8,7 +8,7 @@ namespace Arango.Client.Protocol
     internal class Response
     {
         internal int StatusCode { get; set; }
-        internal WebHeaderCollection Headers { get; set; }
+        internal Dictionary<string,IEnumerable<string>> Headers { get; set; }
         internal string Body { get; set; }
         internal BodyType BodyType { get; set; }
         internal Exception Exception { get; set; }

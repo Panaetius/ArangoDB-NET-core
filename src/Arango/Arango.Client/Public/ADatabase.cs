@@ -89,7 +89,18 @@ namespace Arango.Client
                 return new ATransaction(_connection);
             }
         }
-        
+
+        /// <summary>
+        /// Provides access to graph operations in current database context.
+        /// </summary>
+        public AGraph Graph
+        {
+            get
+            {
+                return new AGraph(_connection);
+            }
+        }
+
         /// <summary>
         /// Initializes new database context to perform operations on remote database identified by specified alias.
         /// </summary>

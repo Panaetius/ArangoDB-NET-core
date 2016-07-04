@@ -1,7 +1,11 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Arango.Client.Protocol
 {
@@ -29,7 +33,7 @@ namespace Arango.Client.Protocol
         internal Uri BaseUri { get; set; }
 
         #endregion
-        
+
         internal Connection(string alias, string hostname, int port, bool isSecured, string username, string password)
         {
             Alias = alias;
@@ -42,7 +46,14 @@ namespace Arango.Client.Protocol
             BaseUri = new Uri((isSecured ? "https" : "http") + "://" + hostname + ":" + port + "/");
         }
 
-        internal Connection(string alias, string hostname, int port, bool isSecured, string databaseName, string userName, string password)
+        internal Connection(
+            string alias,
+            string hostname,
+            int port,
+            bool isSecured,
+            string databaseName,
+            string userName,
+            string password)
         {
             Alias = alias;
             Hostname = hostname;
@@ -52,101 +63,84 @@ namespace Arango.Client.Protocol
             Username = userName;
             Password = password;
 
-            BaseUri = new Uri((isSecured ? "https" : "http") + "://" + hostname + ":" + port + "/_db/" + databaseName + "/");
+            BaseUri =
+                new Uri((isSecured ? "https" : "http") + "://" + hostname + ":" + port + "/_db/" + databaseName + "/");
         }
 
         internal Response Send(Request request)
         {
-            var httpRequest = HttpWebRequest.CreateHttp(BaseUri + request.GetRelativeUri());
-
-            if (request.Headers.Count > 0)
+            using (var client = new HttpClient())
             {
-                httpRequest.Headers = request.Headers;
-            }
-            
-            httpRequest.Proxy = null;
-            httpRequest.Method = request.HttpMethod.ToString();
+                // New code:
+                client.BaseAddress = BaseUri;
+                client.DefaultRequestHeaders.Accept.Clear();
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-            if (!string.IsNullOrEmpty(Username) && !string.IsNullOrEmpty(Password))
-            {
-                httpRequest.Headers["Authorization"] =
-                    "Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(Username + ":" + Password));
-            }
-
-            if (!string.IsNullOrEmpty(request.Body))
-            {
-                httpRequest.ContentType = "application/json; charset=utf-8";
-
-                var data = Encoding.UTF8.GetBytes(request.Body);
-
-                var task = httpRequest.GetRequestStreamAsync();
-                task.Wait();
-
-                using (var stream = task.Result)
+                foreach (var header in request.Headers)
                 {
-                    stream.Write(data, 0, data.Length);
-                    stream.Flush();
-                    stream.Dispose();
+                    client.DefaultRequestHeaders.Add(header.Key, header.Value);
                 }
-            }
 
-            var response = new Response();
+                if (!string.IsNullOrEmpty(Username) && !string.IsNullOrEmpty(Password))
+                {
+                    client.DefaultRequestHeaders.Add(
+                        "Authorization",
+                        "Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(Username + ":" + Password)));
+                }
 
-            try
-            {
-                var responseTask = httpRequest.GetResponseAsync();
+                var message = new HttpRequestMessage(
+                                  new System.Net.Http.HttpMethod(request.HttpMethod.ToString()),
+                                  request.GetRelativeUri());
+
+                if (!string.IsNullOrEmpty(request.Body))
+                {
+                    message.Content = new StringContent(request.Body, Encoding.UTF8, "application/json");
+                }
+
+                var response = new Response();
+
+
+                var responseTask = client.SendAsync(message);
                 responseTask.Wait();
 
-                using (var httpResponse = (HttpWebResponse)responseTask.Result)
-                using (var responseStream = httpResponse.GetResponseStream())
-                using (var reader = new StreamReader(responseStream))
+                if (responseTask.Result.IsSuccessStatusCode)
                 {
-                    response.StatusCode = (int)httpResponse.StatusCode;
-                    response.Headers = httpResponse.Headers;
-                    response.Body = reader.ReadToEnd();
+                    response.StatusCode = (int)responseTask.Result.StatusCode;
+                    response.Headers = responseTask.Result.Headers.ToDictionary(h => h.Key, h => h.Value);
 
-                    reader.Dispose();
-                    responseStream.Dispose();
+                    var bodyTask = responseTask.Result.Content.ReadAsStringAsync();
+                    bodyTask.Wait();
+
+                    response.Body = bodyTask.Result;
+
+                    response.GetBodyDataType();
                 }
-
-                response.GetBodyDataType();
-            }
-            catch (WebException webException)
-            {
-                if ((webException.Status == WebExceptionStatus.ProtocolError) && 
-                    (webException.Response != null))
+                else
                 {
-                    using (var exceptionHttpResponse = (HttpWebResponse)webException.Response)
+                    response.StatusCode = (int)responseTask.Result.StatusCode;
+
+                    if (responseTask.Result.Headers.ToList().Count > 0)
                     {
-                        response.StatusCode = (int)exceptionHttpResponse.StatusCode;
+                        response.Headers = responseTask.Result.Headers.ToDictionary(h => h.Key, h => h.Value);
+                    }
 
-                        if (exceptionHttpResponse.Headers.Count > 0)
-                        {
-                            response.Headers = exceptionHttpResponse.Headers;
-                        }
+                    var bodyTask = responseTask.Result.Content.ReadAsStringAsync();
+                    bodyTask.Wait();
 
-                        if (exceptionHttpResponse.ContentLength > 0)
-                        {
-                            using (var exceptionResponseStream = exceptionHttpResponse.GetResponseStream())
-                            using (var exceptionReader = new StreamReader(exceptionResponseStream))
-                            {
-                                response.Body = exceptionReader.ReadToEnd();
+                    if (!string.IsNullOrEmpty(bodyTask.Result))
+                    {
+                        response.Body = bodyTask.Result;
 
-                                exceptionReader.Dispose();
-                                exceptionResponseStream.Dispose();
-                            }
-                            
-                            response.GetBodyDataType();
-                        }
+                        response.GetBodyDataType();
                     }
 
                     response.Error = new AEerror();
-                    response.Error.Exception = webException;
+                    response.Error.Exception = responseTask.Exception;
 
                     if (response.BodyType == BodyType.Document)
                     {
                         var body = response.ParseBody<Body<object>>();
-                        
+
                         if ((body != null) && body.Error)
                         {
                             response.Error.StatusCode = body.Code;
@@ -154,21 +148,17 @@ namespace Arango.Client.Protocol
                             response.Error.Message = "ArangoDB error: " + body.ErrorMessage;
                         }
                     }
-                    
+
                     if (string.IsNullOrEmpty(response.Error.Message))
                     {
                         response.Error.StatusCode = response.StatusCode;
                         response.Error.Number = 0;
-                        response.Error.Message = "Protocol error: " + webException.Message;
+                        response.Error.Message = "Protocol error: " + responseTask.Exception;
                     }
                 }
-                else
-                {
-                    throw;
-                }
-            }
 
-            return response;
+                return response;
+            }
         }
     }
 }

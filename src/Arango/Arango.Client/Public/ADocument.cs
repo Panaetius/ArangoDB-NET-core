@@ -1,5 +1,6 @@
 ﻿using System;﻿
 using System.Collections.Generic;
+using System.Linq;
 using Arango.Client.Protocol;
 using Arango.fastJSON;
 
@@ -150,6 +151,10 @@ namespace Arango.Client
         /// </summary>
         public AResult<Dictionary<string, object>> Create(string collectionName, Dictionary<string, object> document)
         {
+            if (document.ContainsKey("_key") && document["_key"] == null)
+            {
+                document.Remove("_key");
+            }
             return Create(collectionName, JSON.ToJSON(document, ASettings.JsonParameters));
         }
 
@@ -274,17 +279,17 @@ namespace Arango.Client
             switch (response.StatusCode)
             {
                 case 200:
-                    if ((response.Headers["ETag"] ?? "").Trim().Length > 0)
+                    if ((response.Headers["ETag"].FirstOrDefault() ?? "").Trim().Length > 0)
                     {
-                        result.Value = response.Headers["ETag"].Replace("\"", "");
+                        result.Value = response.Headers["ETag"].DefaultIfEmpty("").FirstOrDefault().Replace("\"", "");
                         result.Success = (result.Value != null);
                     }
                     break;
                 case 304:
                 case 412:
-                    if ((response.Headers["ETag"] ?? "").Trim().Length > 0)
+                    if ((response.Headers["ETag"].FirstOrDefault() ?? "").Trim().Length > 0)
                     {
-                        result.Value = response.Headers["ETag"].Replace("\"", "");
+                        result.Value = response.Headers["ETag"].DefaultIfEmpty("").FirstOrDefault().Replace("\"", "");
                     }
                     break;
                 case 404:

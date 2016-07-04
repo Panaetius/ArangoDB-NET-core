@@ -8,7 +8,7 @@ namespace Arango.Client.Protocol
     {
         internal HttpMethod HttpMethod { get; set; }
         internal string OperationUri { get; set; }
-        internal WebHeaderCollection Headers = new WebHeaderCollection();
+        internal Dictionary<string,string> Headers = new Dictionary<string, string>();
         internal Dictionary<string, string> QueryString = new Dictionary<string, string>();
         internal string Body { get; set; }
         

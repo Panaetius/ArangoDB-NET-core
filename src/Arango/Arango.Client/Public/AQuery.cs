@@ -26,15 +26,15 @@ namespace Arango.Client
         /// </summary>
         public AQuery Aql(string query)
         {
-        	var cleanQuery = Minify(query);
-        	
-        	if (_query.Length > 0)
-        	{
-        		_query.Append(" ");
-        	}
-        	
-        	_query.Append(cleanQuery);
-        	
+            var cleanQuery = Minify(query);
+            
+            if (_query.Length > 0)
+            {
+                _query.Append(" ");
+            }
+            
+            _query.Append(cleanQuery);
+            
             return this;
         }
         
@@ -53,9 +53,9 @@ namespace Arango.Client
         /// </summary>
         public AQuery Count(bool value)
         {
-        	_parameters.Bool(ParameterName.Count, value);
-        	
-        	return this;
+            _parameters.Bool(ParameterName.Count, value);
+            
+            return this;
         }
         
         /// <summary>
@@ -63,9 +63,9 @@ namespace Arango.Client
         /// </summary>
         public AQuery Ttl(int value)
         {
-        	_parameters.Int(ParameterName.TTL, value);
-        	
-        	return this;
+            _parameters.Int(ParameterName.TTL, value);
+            
+            return this;
         }
         
         /// <summary>
@@ -73,9 +73,9 @@ namespace Arango.Client
         /// </summary>
         public AQuery BatchSize(int value)
         {
-        	_parameters.Int(ParameterName.BatchSize, value);
-        	
-        	return this;
+            _parameters.Int(ParameterName.BatchSize, value);
+            
+            return this;
         }
         
         #endregion
@@ -398,48 +398,48 @@ namespace Arango.Client
         /// </summary>
         public static string Minify(string inputQuery)
         {
-        	var query = inputQuery.Replace("\r", "");
-        	
-        	var cleanQuery = new StringBuilder();
+            var query = inputQuery.Replace("\r", "");
+            
+            var cleanQuery = new StringBuilder();
 
-        	var lastAcceptedIndex = 0;
-        	var startRejecting = true;
-        	var acceptedLength = 0;
-        	
-        	for (int i = 0; i < query.Length; i++)
-        	{
-        		if (startRejecting)
-        		{
-        			if ((query[i] != '\n') && (query[i] != '\t') && (query[i] != ' '))
-	        		{
-        				
-	    				lastAcceptedIndex = i;
-	    				startRejecting = false;
-	        		}
-        		}
-    			
-        		if (!startRejecting)
-    			{
-        			if (query[i] == '\n')
-	    			{
-	    				cleanQuery.Append(query.Substring(lastAcceptedIndex, acceptedLength + 1));
-	    				
-	    				acceptedLength = 0;
-	    				lastAcceptedIndex = i;
-	    				startRejecting = true;
-	    			}
-        			else if (i == (query.Length - 1))
-        			{
-        				cleanQuery.Append(query.Substring(lastAcceptedIndex, acceptedLength + 1));
-        			}
-        			else
-        			{
-        				acceptedLength++;
-        			}
-    			}
-        	}
-        	
-        	return cleanQuery.ToString();
+            var lastAcceptedIndex = 0;
+            var startRejecting = true;
+            var acceptedLength = 0;
+            
+            for (int i = 0; i < query.Length; i++)
+            {
+                if (startRejecting)
+                {
+                    if ((query[i] != '\n') && (query[i] != '\t') && (query[i] != ' '))
+                    {
+                        
+                        lastAcceptedIndex = i;
+                        startRejecting = false;
+                    }
+                }
+                
+                if (!startRejecting)
+                {
+                    if (query[i] == '\n')
+                    {
+                        cleanQuery.Append(query.Substring(lastAcceptedIndex, acceptedLength + 1));
+                        
+                        acceptedLength = 0;
+                        lastAcceptedIndex = i;
+                        startRejecting = true;
+                    }
+                    else if (i == (query.Length - 1))
+                    {
+                        cleanQuery.Append(query.Substring(lastAcceptedIndex, acceptedLength + 1));
+                    }
+                    else
+                    {
+                        acceptedLength++;
+                    }
+                }
+            }
+            
+            return cleanQuery.ToString();
         }
         
         private void CopyExtraBodyFields<T>(Body<T> source, Dictionary<string, object> destination)
@@ -448,7 +448,7 @@ namespace Arango.Client
             destination.Long("count", source.Count);
             destination.Bool("cached", source.Cached);
             
-            if (source.Extra != null)
+            if (source.Extra != null && source.Extra is Dictionary<string, object>)
             {
                 destination.Document("extra", (Dictionary<string, object>)source.Extra);
             }
