@@ -5,6 +5,7 @@ using System.Collections.Generic;
 #endif
 using System.Globalization;
 using System.Collections.Specialized;
+using System.Linq;
 using System.Reflection;
 
 namespace System.Runtime.Serialization
@@ -624,7 +625,7 @@ namespace Arango.fastJSON
                                     oset = CreateArray((List<object>)v, pi.pt, pi.bt, globaltypes);
                                 // what about 'else'?
                                 break;
-                            case myPropInfoType.ByteArray: oset = Convert.FromBase64String((string)v); break;
+                            case myPropInfoType.ByteArray: oset = v is List<object> ? ((List<object>)v).Select(i => Convert.ToByte(i)).ToArray() : Convert.FromBase64String((string)v); break;
                             case myPropInfoType.Dictionary: oset = CreateDictionary((List<object>)v, pi.pt, pi.GenericTypes, globaltypes); break;
                             case myPropInfoType.StringKeyDictionary: oset = CreateStringKeyDictionary((Dictionary<string, object>)v, pi.pt, pi.GenericTypes, globaltypes); break;
                             case myPropInfoType.NameValue: oset = CreateNV((Dictionary<string, object>)v); break;

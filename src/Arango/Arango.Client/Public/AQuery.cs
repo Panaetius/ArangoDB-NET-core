@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using Arango.Client.Protocol;
 using Arango.fastJSON;
@@ -204,7 +205,7 @@ namespace Arango.Client
         /// <summary>
         /// Retrieves result value as single generic object.
         /// </summary>
-        public AResult<T> ToObject<T>()
+        public AResult<T> ToObject<T>() where T : class
         {
             var listResult = ToList<T>();
             var result = new AResult<T>();
@@ -222,13 +223,41 @@ namespace Arango.Client
                 }
                 else
                 {
-                    result.Value = (T)Activator.CreateInstance(typeof(T));
+                    result.Value = null;
                 }
             }
             
             return result;
         }
-        
+
+        /// <summary>
+        /// Retrieves result value as single generic object.
+        /// </summary>
+        public AResult<T> ToValue<T>() where T : struct 
+        {
+            var listResult = ToList<T>();
+            var result = new AResult<T>();
+
+            result.StatusCode = listResult.StatusCode;
+            result.Success = listResult.Success;
+            result.Extra = listResult.Extra;
+            result.Error = listResult.Error;
+
+            if (listResult.Success)
+            {
+                if (listResult.Value.Count > 0)
+                {
+                    result.Value = (T)listResult.Value[0];
+                }
+                else
+                {
+                    result.Value = (T)Activator.CreateInstance(typeof(T));
+                }
+            }
+
+            return result;
+        }
+
         /// <summary>
         /// Retrieves result value as single object.
         /// </summary>
